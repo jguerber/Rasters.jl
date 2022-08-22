@@ -1,9 +1,10 @@
 const ASCII_X_ORDER = ForwardOrdered()
 const ASCII_Y_ORDER = ReverseOrdered()
 
-const ASCII_DEFAULT_CRS = EPSG(4326)
-
 has_layers(::Type{ASCIIFile}) = false
+
+defaultcrs(::Type{ASCIIFile}) = EPSG(4326)
+defaultmappedcrs(::Type{ASCIIFile}) = EPSG(4326)
 struct ASCIIparams{T,F}
     filename::F
     params::Dict{Symbol, Real}
@@ -12,7 +13,7 @@ end
 
 function _open(f, ::Type{ASCIIFile}, filename::AbstractString; write = false, kw...)
     isfile(filename) || _filenotfound_error(filename)
-    _open(f, ASCIIFile, ASCIIparams(filename; write))
+    _open(f, ASCIIFile, ASCIIparams(filename; write); kw...)
 end
 _open(f, ::Type{ASCIIFile}, params::ASCIIparams; kw...) = f(params)
 
@@ -48,7 +49,7 @@ function DD.dims(ascp::ASCIIparams, crs=nothing, mappedcrs=nothing)
     xy_metadata = Metadata{ASCIIFile}(Dict())
 
     xindex = LinRange(xbounds[1], xbounds[2] - xspan, nc)
-    yindex = LinRange(ybounds[1], ybounds[2] - yspan, nr)
+    yindex = LinRange(ybounds[2] - yspan, ybounds[1], nr)
 
     xlookup = Projected(xindex;
         order=ASCII_X_ORDER,
@@ -60,7 +61,7 @@ function DD.dims(ascp::ASCIIparams, crs=nothing, mappedcrs=nothing)
         dim=X()
     )
     ylookup = Projected(yindex;
-        order= ForwardOrdered(),
+        order= ReverseOrdered(),
         span=Regular(yspan),
         sampling=Intervals(Start()),
         metadata=xy_metadata,
@@ -102,10 +103,10 @@ function _read_ascii(filename::AbstractString; lazy = false)
         params = Dict(:nr => nr, :nc => nc, :xll => xll, :yll => yll, :dx => dx, :dy => dy, :NA => NA)
 
         if !lazy
-            out = Array{Float64}(undef, nr, nc)
+            out = Array{Float64}(undef, nc, nr)
 
-            for row in 1:nr # build a south-up matrix
-                out[row, :] = parse.(Float64, split(readline(file), " ")[2:end]) # data lines start with a space
+            for row in 1:nr # build a north-up matrix
+                out[:, row] = parse.(Float64, split(readline(file), " ")[2:end]) # data lines start with a space
             end
             output = (out, params)
         else
