@@ -23,6 +23,7 @@ filename(p::ASCIIparams) = p.filename
 params(p::ASCIIparams) = p.params
 
 Base.size(p::ASCIIparams) = (params(p)[:nc], params(p)[:nr])
+Base.eltype(p::ASCIIparams{T}) where T = T
 
 function ASCIIparams(filename::AbstractString; write = false)
     meta = _read_ascii(filename; lazy = true)
@@ -81,6 +82,28 @@ missingval(ascp::ASCIIparams) = params(ascp)[:NA]
 
 DD.metadata(ascp::ASCIIparams) = Metadata{ASCIIFile}()
 
+# Array
+######################################################
+function FileArray(ascp::ASCIIparams, filename = filename(ascp); kw...)
+    size_ = size(ascp)
+    eachchunk = DiskArrays.GridChunks(size_, size_)
+    haschunks = DiskArrays.Unchunked()
+    T = eltype(ascp)
+    N = length(size_)
+    FileArray{ASCIIFile, T, N}(filename, size_; eachchunk, haschunks, kw...)
+end
+
+# Base methods
+######################################################
+# maybe not needed for the moment idk
+
+# AbstrackRasterStack methods
+function Base.open(f::Function, A::FileArray{ASCIIFile}, key...; write = A.write)
+    _open(ASCIIFile, filename(A); key=key(A), write, kw...) do dat
+        f(RasterDiskArray{ASCIIFile}(dat, DA.eachchunk(A), DA.haschunks(A)))
+    end
+end
+
 # Utils
 ######################################################
 
@@ -103,9 +126,11 @@ function _read_ascii(filename::AbstractString; lazy = false)
         params = Dict(:nr => nr, :nc => nc, :xll => xll, :yll => yll, :dx => dx, :dy => dy, :NA => NA)
 
         if !lazy
+            # for use as Raster.data, the coordinates must be swapped
+            # compared to a "normal" matrix
             out = Array{Float64}(undef, nc, nr)
 
-            for row in 1:nr # build a north-up matrix
+            for row in 1:nr
                 out[:, row] = parse.(Float64, split(readline(file), " ")[2:end]) # data lines start with a space
             end
             output = (out, params)
