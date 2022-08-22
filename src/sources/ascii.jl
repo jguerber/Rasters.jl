@@ -1,21 +1,21 @@
 const ASCII_X_ORDER = ForwardOrdered()
 const ASCII_Y_ORDER = ReverseOrdered()
 
-has_layers(::Type{ASCIIFile}) = false
+has_layers(::Type{ASCIIfile}) = false
 
-defaultcrs(::Type{ASCIIFile}) = EPSG(4326)
-defaultmappedcrs(::Type{ASCIIFile}) = EPSG(4326)
+defaultcrs(::Type{ASCIIfile}) = EPSG(4326)
+defaultmappedcrs(::Type{ASCIIfile}) = EPSG(4326)
 struct ASCIIparams{T,F}
     filename::F
     params::Dict{Symbol, Real}
     write::Bool
 end
 
-function _open(f, ::Type{ASCIIFile}, filename::AbstractString; write = false, kw...)
+function _open(f, ::Type{ASCIIfile}, filename::AbstractString; write = false, kw...)
     isfile(filename) || _filenotfound_error(filename)
-    _open(f, ASCIIFile, ASCIIparams(filename; write); kw...)
+    _open(f, ASCIIfile, ASCIIparams(filename; write); kw...)
 end
-_open(f, ::Type{ASCIIFile}, params::ASCIIparams; kw...) = f(params)
+_open(f, ::Type{ASCIIfile}, params::ASCIIparams; kw...) = f(params)
 
 Array(params::ASCIIparams) = _read_ascii(filename(params); lazy = false)[1]
 
@@ -47,7 +47,7 @@ function DD.dims(ascp::ASCIIparams, crs=nothing, mappedcrs=nothing)
     yspan = (ybounds[2] - ybounds[1]) / nr
 
     # Not fully implemented yet
-    xy_metadata = Metadata{ASCIIFile}(Dict())
+    xy_metadata = Metadata{ASCIIfile}(Dict())
 
     xindex = LinRange(xbounds[1], xbounds[2] - xspan, nc)
     yindex = LinRange(ybounds[2] - yspan, ybounds[1], nr)
@@ -80,7 +80,7 @@ end
 
 missingval(ascp::ASCIIparams) = params(ascp)[:NA]
 
-DD.metadata(ascp::ASCIIparams) = Metadata{ASCIIFile}()
+DD.metadata(ascp::ASCIIparams) = Metadata{ASCIIfile}()
 
 # Array
 ######################################################
@@ -90,7 +90,7 @@ function FileArray(ascp::ASCIIparams, filename = filename(ascp); kw...)
     haschunks = DiskArrays.Unchunked()
     T = eltype(ascp)
     N = length(size_)
-    FileArray{ASCIIFile, T, N}(filename, size_; eachchunk, haschunks, kw...)
+    FileArray{ASCIIfile, T, N}(filename, size_; eachchunk, haschunks, kw...)
 end
 
 # Base methods
@@ -98,9 +98,9 @@ end
 # maybe not needed for the moment idk
 
 # AbstrackRasterStack methods
-function Base.open(f::Function, A::FileArray{ASCIIFile}, key...; write = A.write)
-    _open(ASCIIFile, filename(A); key=key(A), write, kw...) do dat
-        f(RasterDiskArray{ASCIIFile}(dat, DA.eachchunk(A), DA.haschunks(A)))
+function Base.open(f::Function, A::FileArray{ASCIIfile}, key...; write = A.write)
+    _open(ASCIIfile, filename(A); key=key(A), write, kw...) do dat
+        f(RasterDiskArray{ASCIIfile}(dat, DA.eachchunk(A), DA.haschunks(A)))
     end
 end
 

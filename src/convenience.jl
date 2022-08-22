@@ -9,7 +9,7 @@ const REV_EXT = Dict(
     ".gri" => GRDfile, 
     ".nc" => NCDfile, 
     ".h5" => SMAPfile,
-    ".asc" => ASCIIFile
+    ".asc" => ASCIIfile
 )
 
 # Get the source backend for a file extension, falling back to GDALfile
