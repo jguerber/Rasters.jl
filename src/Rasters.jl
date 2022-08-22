@@ -85,6 +85,7 @@ struct NCDfile end
 struct GRDfile end
 struct GDALfile end
 struct SMAPfile end
+struct ASCIIFile end
 
 include("lookup.jl")
 include("dimensions.jl")
