@@ -133,5 +133,6 @@ include("sources/smap.jl")
 include("sources/ncdatasets.jl")
 include("sources/gdal.jl")
 include("sources/rasterdatasources.jl")
+include("sources/ascii.jl")
 
 end
