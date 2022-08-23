@@ -95,7 +95,9 @@ end
 
 # Base methods
 ######################################################
-# maybe not needed for the moment idk
+function Base.write(filename::String, ::Type{ASCIIfile}, A::AbstractRaster{T,2}) where T
+    _write_ascii(filename, eltype(A), dims(A), missingval(A))
+end
 
 # AbstrackRasterStack methods
 function Base.open(f::Function, A::FileArray{ASCIIfile}, key...; write = A.write)
@@ -140,4 +142,34 @@ function _read_ascii(filename::AbstractString; lazy = false)
     end
 
     return output
+end
+
+"""
+    _write_ascii
+"""
+function _write_ascii(filename::String, eltype::Type, dims, missingval)
+    # Collect Parameters
+    x, y = DD.dims(dims)
+
+    ncols, nrows = length(x), length(y)
+    xll = min(bounds(x)...)
+    yll = min(bounds(y)...)
+
+    dx = abs((bounds(x)[2] - bounds(x)[1])/ncols)
+    dy = abs((bounds(y)[2] - bounds(y)[1])/nrows)
+    nodatavalue = missingval
+    # Write
+    open(filename, "w") do f
+        write(f,
+            """
+            ncols        $(string(ncols))
+            nrows        $(string(nrows))
+            xllcorner    $(string(xll))
+            yllcorner    $(string(yll))
+            dx           $(string(dx))
+            dy           $(string(dy))
+            NODATA_value  $(string(nodatavalue))
+            """
+        )
+    end
 end
