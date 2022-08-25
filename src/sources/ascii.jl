@@ -99,6 +99,14 @@ function Base.write(filename::String, ::Type{ASCIIfile}, A::AbstractRaster{T,2})
     _write_ascii(filename, A)
 end
 
+function Base.write(filename::String, ::Type{ASCIIfile}, A::AbstractRaster{T,3}) where T
+    if hasdim(A, Band)
+        _write_ascii(filename, A[Band(1)])
+    else
+        throw("Unsupported thrid dimension when attempting to write a .asc array. Please drop third dimension.")
+    end
+end
+
 # AbstrackRasterStack methods
 function Base.open(f::Function, A::FileArray{ASCIIfile}, key...; write = A.write)
     _open(ASCIIfile, filename(A); key=key(A), write, kw...) do dat
@@ -132,7 +140,7 @@ function _read_ascii(filename::AbstractString; lazy = false)
             # compared to a "normal" matrix
             out = Array{Float64}(undef, nc, nr)
 
-            for row in 1:nr
+            for row in 1:nr # columns of a (nc, nr) array
                 out[:, row] = parse.(Float64, split(readline(file), " ")[2:end]) # data lines start with a space
             end
             output = (out, params)
@@ -158,6 +166,9 @@ function _write_ascii(filename::String, A::AbstractRaster)
     dx = abs((bounds(x)[2] - bounds(x)[1])/ncols)
     dy = abs((bounds(y)[2] - bounds(y)[1])/nrows)
     nodatavalue = missingval(A)
+    if nodatavalue isa Nothing
+        nodatavalue = -9999
+    end
     # Write
     open(filename, "w") do f
         write(f,
@@ -171,8 +182,9 @@ function _write_ascii(filename::String, A::AbstractRaster)
             NODATA_value  $(string(nodatavalue))
             """
         )
-        for row in 1:nrows
-            write(f, " " * join(A[row, :], " \n"))
+        for col in 1:nrows # ascii format is column by column
+            write(f, " " * join(A[:, col], " ") * "\n")
         end
     end
+    return filename
 end
