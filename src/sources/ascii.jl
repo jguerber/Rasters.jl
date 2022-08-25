@@ -17,7 +17,7 @@ function _open(f, ::Type{ASCIIfile}, filename::AbstractString; write = false, kw
 end
 _open(f, ::Type{ASCIIfile}, params::ASCIIparams; kw...) = f(params)
 
-Array(params::ASCIIparams) = _read_ascii(filename(params); lazy = false)[1]
+Array(params::ASCIIparams) = _io_ascii(Array, params)
 
 filename(p::ASCIIparams) = p.filename
 params(p::ASCIIparams) = p.params
@@ -81,6 +81,7 @@ end
 missingval(ascp::ASCIIparams) = params(ascp)[:NA]
 
 DD.metadata(ascp::ASCIIparams) = Metadata{ASCIIfile}()
+DD.ndims(ascp::ASCIIparams) = 2
 
 # Array
 ######################################################
@@ -100,6 +101,7 @@ function Base.write(filename::String, ::Type{ASCIIfile}, A::AbstractRaster{T,2})
 end
 
 function Base.write(filename::String, ::Type{ASCIIfile}, A::AbstractRaster{T,3}) where T
+    # TODO: this is really clumsy, improve behavior
     if hasdim(A, Band)
         _write_ascii(filename, A[Band(1)])
     else
@@ -107,15 +109,29 @@ function Base.write(filename::String, ::Type{ASCIIfile}, A::AbstractRaster{T,3})
     end
 end
 
+function Base.write(ascp::ASCIIparams, dat::AbstractArray{T,2}) where T
+    pars = params(acsp)
+    _write_ascii(filename(ascp), pars, dat)
+end
+
 # AbstrackRasterStack methods
 function Base.open(f::Function, A::FileArray{ASCIIfile}, key...; write = A.write)
-    _open(ASCIIfile, filename(A); key=key(A), write, kw...) do dat
-        f(RasterDiskArray{ASCIIfile}(dat, DA.eachchunk(A), DA.haschunks(A)))
+    _open(ASCIIfile, filename(A); write) do dat
+        mappedA = f(Array(dat))
+        RasterDiskArray{ASCIIfile}(mappedA, DA.eachchunk(A), DA.haschunks(A))
     end
 end
 
 # Utils
 ######################################################
+
+function _io_ascii(f, ascp::ASCIIparams)
+    A = f(_read_ascii(filename(ascp); lazy = false)[1])
+    if ascp.write
+        w = _write_ascii(filename(ascp), params(ascp), A)
+    end
+    return A
+end
 
 """
     _read_ascii
@@ -170,6 +186,15 @@ function _write_ascii(filename::String, A::AbstractRaster)
         nodatavalue = -9999
     end
     # Write
+    _write_ascii(filename, ncols, nrows, xll, yll, dx, dy, nodatavalue, Array(A))
+end
+
+function _write_ascii(filename, pars::Dict{Symbol, Real}, dat::AbstractArray)
+    _write_ascii(filename, pars[:nc], pars[:nr], pars[:xll], pars[:yll], pars[:dx], pars[:dy], pars[:NA], dat)
+end
+
+function _write_ascii(filename, ncols, nrows, xll, yll, dx, dy, nodatavalue, dat)
+    # Write
     open(filename, "w") do f
         write(f,
             """
@@ -183,7 +208,7 @@ function _write_ascii(filename::String, A::AbstractRaster)
             """
         )
         for col in 1:nrows # ascii format is column by column
-            write(f, " " * join(A[:, col], " ") * "\n")
+            write(f, " " * join(dat[:, col], " ") * "\n")
         end
     end
     return filename
