@@ -21,10 +21,10 @@ ascpath = "britanny.asc"
         @test all(open(A -> A[Y=1], ascarray) .=== ascarray[:, 1, :])
         tempfile = tempname()
         cp(ascpath, tempfile * ".asc")
-        grdwritearray = Raster(tempfile * ".asc"; lazy=true)
-        open(grdwritearray; write=true) do A
+        ascwritearray = Raster(tempfile * ".asc"; lazy=true)
+        open(ascwritearray; write=true) do A
             A .*= 2
         end
-        @test Raster(tempfile * ".asc") == grdarray .* 2
+        @test Raster(tempfile * ".asc") == ascarray .* 2
     end
 end
