@@ -17,7 +17,7 @@ function _open(f, ::Type{ASCIIfile}, filename::AbstractString; write = false, kw
 end
 _open(f, ::Type{ASCIIfile}, params::ASCIIparams; kw...) = f(params)
 
-Array(params::ASCIIparams) = _io_ascii(Array, params)
+Array(ascp::ASCIIparams) = _io_ascii(Array, ascp; write = ascp.write)
 
 filename(p::ASCIIparams) = p.filename
 params(p::ASCIIparams) = p.params
@@ -125,9 +125,10 @@ end
 # Utils
 ######################################################
 
-function _io_ascii(f, ascp::ASCIIparams)
+function _io_ascii(f, ascp::ASCIIparams; write = false)
     A = f(_read_ascii(filename(ascp); lazy = false)[1])
-    if ascp.write
+    if write
+        println(A[1,1])
         w = _write_ascii(filename(ascp), params(ascp), A)
     end
     return A
@@ -139,7 +140,7 @@ end
 Reads an ASCII file. Parameters are parsed according to the [AAIGrid](https://gdal.org/drivers/raster/aaigrid.html) format.
 """
 function _read_ascii(filename::AbstractString; lazy = false)
-
+    isfile(filename) || throw(ArgumentError("File $filename does not exist"))
     output = open(filename, "r") do file
         nc = parse(Int, match(r"ncols (.+)", readline(file)).captures[1])
         nr = parse(Int, match(r"nrows (.+)", readline(file)).captures[1])
@@ -194,6 +195,7 @@ function _write_ascii(filename, pars::Dict{Symbol, Real}, dat::AbstractArray)
 end
 
 function _write_ascii(filename, ncols, nrows, xll, yll, dx, dy, nodatavalue, dat)
+    size(dat) == (nrows, ncols) || throw(ArgumentError("$nrows rows and $ncols cols incompatible with array of size $(size(dat))"))
     # Write
     open(filename, "w") do f
         write(f,
